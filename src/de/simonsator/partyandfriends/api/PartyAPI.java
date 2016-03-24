@@ -1,9 +1,11 @@
 package de.simonsator.partyandfriends.api;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import de.simonsator.partyandfriends.main.Main;
+import redis.clients.jedis.Jedis;
 
 public class PartyAPI {
 	/**
@@ -15,7 +17,13 @@ public class PartyAPI {
 	 * @return Returns the pPartyID of the party, where the player is in
 	 */
 	public int getPartyID(UUID pPlayer) {
-		String i = Main.getInstance().getConnection().getPartyID(pPlayer);
+		String i;
+		Jedis jedis = Main.getInstance().connect();
+		try {
+			i = jedis.get("PAF:Partys:Player:" + pPlayer);
+		} finally {
+			jedis.close();
+		}
 		if (i == null) {
 			return -1;
 		} else {
@@ -32,12 +40,15 @@ public class PartyAPI {
 	 * @return Returns the leader of the party
 	 */
 	public UUID getLeader(int pPartyID) {
-		String leader = Main.getInstance().getConnection().getPartyLeader(pPartyID);
-		if (leader == null) {
-			return null;
-		} else {
-			return UUID.fromString(leader);
+		Jedis jedis = Main.getInstance().connect();
+		String partyLeader = jedis.get("PAF:Partys:Leader:" + pPartyID);
+		try {
+			if (partyLeader != null)
+				return UUID.fromString(partyLeader);
+		} finally {
+			jedis.close();
 		}
+		return null;
 	}
 
 	/**
@@ -50,7 +61,17 @@ public class PartyAPI {
 	 *         party does not exist it returns an empty list.
 	 */
 	public ArrayList<UUID> getPlayersInParty(int pPartyID) {
-		return Main.getInstance().getConnection().getPlayersInParty(pPartyID);
+		Jedis jedis = Main.getInstance().connect();
+		try {
+			List<String> playersString = jedis.lrange("PAF:Partys:PartyMembers:" + pPartyID, 0, 1000);
+			ArrayList<UUID> players = new ArrayList<>();
+			for (String playerUUID : playersString) {
+				players.add(UUID.fromString(playerUUID));
+			}
+			return players;
+		} finally {
+			jedis.close();
+		}
 	}
 
 	/**
@@ -64,7 +85,9 @@ public class PartyAPI {
 	 */
 	public ArrayList<UUID> getAllPlayersInParty(int pPartyID) {
 		ArrayList<UUID> list = getAllPlayersInParty(pPartyID);
-		list.add(getLeader(pPartyID));
+		UUID leaderUUID = getLeader(pPartyID);
+		if (leaderUUID != null)
+			list.add(leaderUUID);
 		return list;
 	}
 
