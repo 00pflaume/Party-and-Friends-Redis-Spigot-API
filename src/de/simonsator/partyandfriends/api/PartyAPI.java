@@ -84,7 +84,7 @@ public class PartyAPI {
 	 *         party does not exist it returns an empty list.
 	 */
 	public ArrayList<UUID> getAllPlayersInParty(int pPartyID) {
-		ArrayList<UUID> list = getAllPlayersInParty(pPartyID);
+		ArrayList<UUID> list = getPlayersInParty(pPartyID);
 		UUID leaderUUID = getLeader(pPartyID);
 		if (leaderUUID != null)
 			list.add(leaderUUID);
